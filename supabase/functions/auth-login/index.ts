@@ -17,37 +17,32 @@ serve(async (req) => {
     console.log('Tentando login para:', email);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Buscar usuário
-    const { data: queryData, error: queryError } = await supabase.functions.invoke('query-postgres', {
-      body: {
-        query: 'SELECT id, email, senha, nome, tipo, ativo FROM usuarios WHERE email = $1',
-        params: [email]
-      }
-    });
+    const { data: usuarios, error: queryError } = await supabase
+      .from('usuarios')
+      .select('id, email, senha, nome, tipo, ativo')
+      .eq('email', email)
+      .single();
 
-    if (queryError) throw queryError;
-
-    if (!queryData.success || !queryData.data || queryData.data.length === 0) {
+    if (queryError || !usuarios) {
       return new Response(
         JSON.stringify({ success: false, error: 'Usuário não encontrado' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    const usuario = queryData.data[0];
-
-    if (!usuario.ativo) {
+    if (!usuarios.ativo) {
       return new Response(
         JSON.stringify({ success: false, error: 'Usuário inativo' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    // Para simplicidade, vamos fazer comparação direta (em produção, use bcrypt)
-    if (usuario.senha !== senha) {
+    // Comparação direta de senha (em produção, use bcrypt)
+    if (usuarios.senha !== senha) {
       return new Response(
         JSON.stringify({ success: false, error: 'Senha incorreta' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -55,20 +50,18 @@ serve(async (req) => {
     }
 
     // Buscar hotéis do usuário
-    const { data: hoteisData } = await supabase.functions.invoke('query-postgres', {
-      body: {
-        query: 'SELECT hotel FROM usuario_hoteis WHERE usuario_id = $1',
-        params: [usuario.id]
-      }
-    });
+    const { data: hoteisData } = await supabase
+      .from('usuario_hoteis')
+      .select('hotel')
+      .eq('usuario_id', usuarios.id);
 
-    const hoteis = hoteisData?.success ? hoteisData.data.map((h: any) => h.hotel) : [];
+    const hoteis = hoteisData?.map((h) => h.hotel) || [];
 
     const userData = {
-      id: usuario.id,
-      email: usuario.email,
-      nome: usuario.nome,
-      tipo: usuario.tipo,
+      id: usuarios.id,
+      email: usuarios.email,
+      nome: usuarios.nome,
+      tipo: usuarios.tipo,
       hoteis
     };
 

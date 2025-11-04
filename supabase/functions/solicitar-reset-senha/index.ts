@@ -23,18 +23,17 @@ serve(async (req) => {
     console.log('Solicitação de reset de senha para:', email);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verificar se usuário existe
-    const { data: userData } = await supabase.functions.invoke('query-postgres', {
-      body: {
-        query: 'SELECT id FROM usuarios WHERE email = $1',
-        params: [email]
-      }
-    });
+    const { data: usuario } = await supabase
+      .from('usuarios')
+      .select('id')
+      .eq('email', email)
+      .single();
 
-    if (!userData.success || !userData.data || userData.data.length === 0) {
+    if (!usuario) {
       // Por segurança, não informar se email existe ou não
       return new Response(
         JSON.stringify({ 
@@ -50,13 +49,13 @@ serve(async (req) => {
     const expiraEm = new Date(Date.now() + 3600000); // 1 hora
 
     // Inserir token
-    await supabase.functions.invoke('query-postgres', {
-      body: {
-        query: `INSERT INTO password_reset_tokens (email, token, expira_em) 
-                VALUES ($1, $2, $3)`,
-        params: [email, token, expiraEm.toISOString()]
-      }
-    });
+    await supabase
+      .from('password_reset_tokens')
+      .insert({
+        email,
+        token,
+        expira_em: expiraEm.toISOString()
+      });
 
     console.log('Token de reset gerado para:', email);
 

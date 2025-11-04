@@ -14,7 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      password_reset_tokens: {
+        Row: {
+          created_at: string | null
+          email: string
+          expira_em: string
+          id: number
+          token: string
+          usado: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          expira_em: string
+          id?: number
+          token: string
+          usado?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          expira_em?: string
+          id?: number
+          token?: string
+          usado?: boolean | null
+        }
+        Relationships: []
+      }
+      usuario_hoteis: {
+        Row: {
+          hotel: string
+          id: number
+          usuario_id: number | null
+        }
+        Insert: {
+          hotel: string
+          id?: number
+          usuario_id?: number | null
+        }
+        Update: {
+          hotel?: string
+          id?: number
+          usuario_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usuario_hoteis_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      usuarios: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          email: string
+          id: number
+          nome: string | null
+          senha: string
+          tipo: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          email: string
+          id?: number
+          nome?: string | null
+          senha: string
+          tipo?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          email?: string
+          id?: number
+          nome?: string | null
+          senha?: string
+          tipo?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

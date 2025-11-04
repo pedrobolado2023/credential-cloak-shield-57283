@@ -15,36 +15,26 @@ serve(async (req) => {
     console.log('Listando usuários...');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Buscar todos os usuários
-    const { data: queryData, error: queryError } = await supabase.functions.invoke('query-postgres', {
-      body: {
-        query: 'SELECT id, email, nome, tipo, ativo FROM usuarios ORDER BY email',
-        params: []
-      }
-    });
+    const { data: usuarios, error: queryError } = await supabase
+      .from('usuarios')
+      .select('id, email, nome, tipo, ativo')
+      .order('email');
 
     if (queryError) throw queryError;
 
-    if (!queryData.success) {
-      throw new Error(queryData.error || 'Erro ao buscar usuários');
-    }
-
-    const usuarios = queryData.data;
-
     // Buscar hotéis de cada usuário
     const usuariosComHoteis = await Promise.all(
-      usuarios.map(async (usuario: any) => {
-        const { data: hoteisData } = await supabase.functions.invoke('query-postgres', {
-          body: {
-            query: 'SELECT hotel FROM usuario_hoteis WHERE usuario_id = $1',
-            params: [usuario.id]
-          }
-        });
+      (usuarios || []).map(async (usuario: any) => {
+        const { data: hoteisData } = await supabase
+          .from('usuario_hoteis')
+          .select('hotel')
+          .eq('usuario_id', usuario.id);
 
-        const hoteis = hoteisData?.success ? hoteisData.data.map((h: any) => h.hotel) : [];
+        const hoteis = hoteisData?.map((h: any) => h.hotel) || [];
 
         return {
           ...usuario,
